@@ -382,11 +382,12 @@ AutoFillOnnx::Create(
     {
       std::set<std::string> onnx_dirs;
       RETURN_IF_ERROR(GetDirectorySubdirs(version_path, &onnx_dirs));
+      std::vector<std::shared_ptr<LocalizedDirectory>> local_onnx_path;
 
       for (auto dir : onnx_dirs) {
         const auto onnx_path = JoinPath({version_path, dir});
-        std::string local_onnx_path;
-        status = DownloadFileFolder(onnx_path, &local_onnx_path);
+        local_onnx_path.push_back(std::shared_ptr<LocalizedDirectory>(nullptr));
+        status = LocalizeDirectory(onnx_path, &local_onnx_path.back());
         if (!status.IsOk()) {
           LOG_VERBOSE(1) << "failed to download " << onnx_path << ": "
                          << status.AsString();
@@ -394,9 +395,8 @@ AutoFillOnnx::Create(
         }
 
         status = OnnxLoader::LoadSession(
-            std::make_pair(false, local_onnx_path), session_options, &session);
-
-        DestroyFileFolder(local_onnx_path);
+            std::make_pair(false, local_onnx_path.back()->Path()),
+            session_options, &session);
 
         if (status.IsOk()) {
           local_autofill.reset(new AutoFillOnnxImpl(model_name, dir));
@@ -409,7 +409,7 @@ AutoFillOnnx::Create(
           unsupported_opset = true;
           // no break in case there is a valid version
         } else {
-          LOG_VERBOSE(1) << "failed to load " << local_onnx_path << ": "
+          LOG_VERBOSE(1) << "failed to load " << onnx_path << ": "
                          << status.AsString();
         }
       }

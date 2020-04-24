@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2019, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2018-2020, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -69,14 +69,16 @@ GraphDefBackendFactory::CreateBackend(
       GetDirectoryFiles(path, true /* skip_hidden_files */, &graphdef_files));
 
   std::unordered_map<std::string, std::string> models;
+  std::vector<std::shared_ptr<LocalizedDirectory>> local_graphdef_path;
+
   for (const auto& filename : graphdef_files) {
     const auto graphdef_path = JoinPath({path, filename});
-    std::string local_graphdef_path;
-
-    RETURN_IF_ERROR(DownloadFileFolder(graphdef_path, &local_graphdef_path));
+    local_graphdef_path.push_back(std::shared_ptr<LocalizedDirectory>(nullptr));
+    RETURN_IF_ERROR(
+        LocalizeDirectory(graphdef_path, &local_graphdef_path.back()));
     models.emplace(
         std::piecewise_construct, std::make_tuple(filename),
-        std::make_tuple(local_graphdef_path));
+        std::make_tuple(local_graphdef_path.back()->Path()));
   }
 
   // Create the backend for the model and all the execution contexts
@@ -86,11 +88,6 @@ GraphDefBackendFactory::CreateBackend(
   RETURN_IF_ERROR(local_backend->Init(
       path, model_config, backend_config_.get(), kTensorFlowGraphDefPlatform));
   RETURN_IF_ERROR(local_backend->CreateExecutionContexts(models));
-
-  // Destroy local copy if exists
-  for (const auto& model : models) {
-    RETURN_IF_ERROR(DestroyFileFolder(model.second));
-  }
 
   *backend = std::move(local_backend);
   return Status::Success;

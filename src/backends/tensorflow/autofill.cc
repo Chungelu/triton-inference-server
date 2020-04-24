@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2019, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2018-2020, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -285,11 +285,14 @@ AutoFillSavedModel::Create(
   TRTISTF_Error* err = nullptr;
   TRTISTF_Model* trtistf_model;
 
+  std::vector<std::shared_ptr<LocalizedDirectory>> local_savedmodel_path;
+
   for (auto dir : savedmodel_dirs) {
     const auto savedmodel_path = JoinPath({version_path, dir});
-    std::string local_savedmodel_path;
+    local_savedmodel_path.push_back(
+        std::shared_ptr<LocalizedDirectory>(nullptr));
     RETURN_IF_ERROR(
-        DownloadFileFolder(savedmodel_path, &local_savedmodel_path));
+        LocalizeDirectory(savedmodel_path, &local_savedmodel_path.back()));
 
     auto graphdef_backend_config =
         std::static_pointer_cast<GraphDefBackendFactory::Config>(
@@ -297,15 +300,15 @@ AutoFillSavedModel::Create(
 
     trtistf_model = nullptr;
     err = TRTISTF_ModelCreateFromSavedModel(
-        &trtistf_model, model_name.c_str(), local_savedmodel_path.c_str(),
-        TRTISTF_NO_GPU_DEVICE, false /* have_graph */, 0 /* graph_level */,
+        &trtistf_model, model_name.c_str(),
+        local_savedmodel_path.back()->Path().c_str(), TRTISTF_NO_GPU_DEVICE,
+        false /* have_graph */, 0 /* graph_level */,
         graphdef_backend_config->allow_gpu_memory_growth,
         graphdef_backend_config->per_process_gpu_memory_fraction,
         graphdef_backend_config->allow_soft_placement,
         graphdef_backend_config->memory_limit_mb, nullptr /* tftrt_config */,
         false /* auto_mixed precision */);
 
-    RETURN_IF_ERROR(DestroyFileFolder(local_savedmodel_path));
     if (err == nullptr) {
       savedmodel_dir = dir;
       break;

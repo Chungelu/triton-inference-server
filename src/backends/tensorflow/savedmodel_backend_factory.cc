@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2019, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2018-2020, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -68,15 +68,17 @@ SavedModelBackendFactory::CreateBackend(
   RETURN_IF_ERROR(GetDirectorySubdirs(path, &savedmodel_subdirs));
 
   std::unordered_map<std::string, std::string> models;
+  std::vector<std::shared_ptr<LocalizedDirectory>> local_savedmodel_path;
+
   for (const auto& filename : savedmodel_subdirs) {
     const auto savedmodel_path = JoinPath({path, filename});
-    std::string local_savedmodel_path;
-
+    local_savedmodel_path.push_back(
+        std::shared_ptr<LocalizedDirectory>(nullptr));
     RETURN_IF_ERROR(
-        DownloadFileFolder(savedmodel_path, &local_savedmodel_path));
+        LocalizeDirectory(savedmodel_path, &local_savedmodel_path.back()));
     models.emplace(
         std::piecewise_construct, std::make_tuple(filename),
-        std::make_tuple(local_savedmodel_path));
+        std::make_tuple(local_savedmodel_path.back()->Path()));
   }
 
   // Create the backend for the model and all the execution contexts
@@ -87,11 +89,6 @@ SavedModelBackendFactory::CreateBackend(
       path, model_config, backend_config_.get(),
       kTensorFlowSavedModelPlatform));
   RETURN_IF_ERROR(local_backend->CreateExecutionContexts(models));
-
-  // Destroy local copy if exists
-  for (const auto& model : models) {
-    RETURN_IF_ERROR(DestroyFileFolder(model.second));
-  }
 
   *backend = std::move(local_backend);
   return Status::Success;
