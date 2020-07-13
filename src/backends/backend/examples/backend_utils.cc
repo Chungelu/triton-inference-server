@@ -35,10 +35,18 @@ std::string
 InstanceProperties::AsString() const
 {
   std::string str("id " + std::to_string(id_) + ", ");
-  if (kind_ == Kind::CPU) {
-    str += "CPU";
-  } else {
-    str += "GPU (" + std::to_string(device_id_) + ")";
+  switch (kind_) {
+    case Kind::CPU:
+      str += "CPU";
+      break;
+    case Kind::GPU:
+      str += "GPU (" + std::to_string(device_id_) + ")";
+      break;
+    case Kind::MODEL:
+      str += "MODEL";
+      break;
+    default:
+      break;
   }
 
   return str;
@@ -84,6 +92,11 @@ ParseInstanceGroups(
           instances->emplace_back(
               idx++, InstanceProperties::Kind::GPU, device_id);
         }
+      }
+    } else if (kind_str == "KIND_MODEL") {
+      for (int32_t c = 0; c < count; ++c) {
+        instances->emplace_back(
+            idx++, InstanceProperties::Kind::MODEL, 0 /* device_id */);
       }
     } else {
       RETURN_ERROR_IF_FALSE(

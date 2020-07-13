@@ -102,7 +102,7 @@ struct ResponseFactoryDeleter {
 /// Configuration information for a model instance.
 ///
 struct InstanceProperties {
-  enum class Kind { CPU, GPU };
+  enum class Kind { CPU, GPU, MODEL };
 
   InstanceProperties(const size_t i, const Kind k, const int d)
       : id_(i), kind_(k), device_id_(d)
@@ -112,8 +112,8 @@ struct InstanceProperties {
 
   size_t id_;
 
-  // For CPU device_id_ is always 0. For GPU device_id_ indicates the
-  // GPU device to be used by the instance.
+  // For CPU and MODEL, device_id_ is always 0. For GPU,
+  // device_id_ indicates the GPU device to be used by the instance.
   Kind kind_;
   int device_id_;
 };
