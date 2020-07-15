@@ -156,6 +156,7 @@ enum OptionId {
   OPTION_CUDA_MEMORY_POOL_BYTE_SIZE,
   OPTION_MIN_SUPPORTED_COMPUTE_CAPABILITY,
   OPTION_EXIT_TIMEOUT_SECS,
+  OPTION_BACKEND_DIR,
   OPTION_BACKEND_CONFIG
 };
 
@@ -303,6 +304,9 @@ std::vector<Option> options_
        "Timeout (in seconds) when exiting to wait for in-flight inferences to "
        "finish. After the timeout expires the server exits even if inferences "
        "are still in flight."},
+      {OPTION_BACKEND_DIR, "backend-dir", Option::ArgStr,
+       "The global directory searched for backend shared libraries. Default is "
+       "'/opt/tritonserver/backends'."},
   {
     OPTION_BACKEND_CONFIG, "backend-config", "<string>,<string>=<string>",
         "Specify a backend-specific configuration setting. The format of this "
@@ -791,6 +795,8 @@ Parse(TRITONSERVER_ServerOptions** server_options, int argc, char** argv)
   int32_t exit_timeout_secs = 30;
   int32_t repository_poll_secs = repository_poll_secs_;
   int64_t pinned_memory_pool_byte_size = 1 << 28;
+
+  std::string backend_dir = "/opt/tritonserver/backends";
   std::vector<std::tuple<std::string, std::string, std::string>>
       backend_config_settings;
 
@@ -959,6 +965,9 @@ Parse(TRITONSERVER_ServerOptions** server_options, int argc, char** argv)
       case OPTION_EXIT_TIMEOUT_SECS:
         exit_timeout_secs = ParseIntOption(optarg);
         break;
+      case OPTION_BACKEND_DIR:
+        backend_dir = oparg;
+        break;
       case OPTION_BACKEND_CONFIG:
         backend_config_settings.push_back(ParseBackendConfigOption(optarg));
         break;
@@ -1085,6 +1094,9 @@ Parse(TRITONSERVER_ServerOptions** server_options, int argc, char** argv)
       "setting GPU metrics enable");
 #endif  // TRITON_ENABLE_METRICS
 
+  FAIL_IF_ERR(
+      TRITONSERVER_ServerOptionsSetBackendDirectory(loptions, backend_dir),
+      "setting backend directory");
   for (const auto& bcs : backend_config_settings) {
     FAIL_IF_ERR(
         TRITONSERVER_ServerOptionsSetBackendConfig(

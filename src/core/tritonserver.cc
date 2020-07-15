@@ -211,6 +211,9 @@ class TritonServerOptions {
   bool GpuMetrics() const { return gpu_metrics_; }
   void SetGpuMetrics(bool b) { gpu_metrics_ = b; }
 
+  const std::string& BackendDir() const { return backend_dir_; }
+  void SetBackendDir(const std::string& bd) { backend_dir_ = bd; }
+
   const ni::BackendCmdlineConfigMap& BackendCmdlineConfigMap() const
   {
     return backend_cmdline_config_map_;
@@ -251,6 +254,7 @@ class TritonServerOptions {
   uint64_t pinned_memory_pool_size_;
   std::map<int, uint64_t> cuda_memory_pool_size_;
   double min_compute_capability_;
+  std::string backend_dir_;
   ni::BackendCmdlineConfigMap backend_cmdline_config_map_;
 
   bool tf_soft_placement_;
@@ -269,7 +273,8 @@ TritonServerOptions::TritonServerOptions()
 #else
       min_compute_capability_(0),
 #endif  // TRITON_ENABLE_GPU
-      tf_soft_placement_(true), tf_gpu_mem_fraction_(0)
+      backend_dir_("/opt/tritonserver/backends"), tf_soft_placement_(true),
+      tf_gpu_mem_fraction_(0)
 {
 #ifndef TRITON_ENABLE_METRICS
   metrics_ = false;
@@ -1064,6 +1069,16 @@ TRITONSERVER_ServerOptionsSetGpuMetrics(
   return TRITONSERVER_ErrorNew(
       TRITONSERVER_ERROR_UNSUPPORTED, "metrics not supported");
 #endif  // TRITON_ENABLE_METRICS
+}
+
+TRITONSERVER_Error*
+TRITONSERVER_ServerOptionsSetBackendDirectory(
+    TRITONSERVER_ServerOptions* options, const char* backend_dir)
+{
+  TritonServerOptions* loptions =
+      reinterpret_cast<TritonServerOptions*>(options);
+  loptions->SetBackendDir(backend_dir);
+  return nullptr;  // Success
 }
 
 TRITONSERVER_Error*

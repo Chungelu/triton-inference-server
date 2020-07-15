@@ -71,7 +71,7 @@ TritonModel::Create(
   const auto model_path = localized_model_dir->Path();
   const auto version_path = JoinPath({model_path, std::to_string(version)});
   const std::string global_path =
-      "/opt/tritonserver/backends";  // FIXME need cmdline flag
+      JoinPath({backend_dir, model_config.backend()});
   const std::vector<std::string> search_paths = {version_path, model_path,
                                                  global_path};
 
